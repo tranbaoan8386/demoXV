@@ -1,0 +1,27 @@
+BƯỚC KHỞI CHẠY HẠ TẦNG (DOCKER)
+# 1. Tạo trước mạng chung (chỉ cần chạy 1 lần duy nhất)
+docker network create librechat_default
+
+# 2. Khởi chạy toàn bộ Hạ tầng
+docker compose -f docker-compose.infra.yml up -d
+
+Tắt và xóa toàn bộ Volume dữ liệu cũ
+docker compose -f docker-compose.infra.yml down -v
+
+
+### Chạy Migration vào sso_db
+dùng ngay Docker để chạy golang-migrate
+
+docker run --rm `
+  -v "D:\DemoXV\services\sso-service\migrations:/migrations" `
+  --network host `
+  migrate/migrate `
+  -path=/migrations/ `
+  -database "postgres://demoxv_admin:demoxv_secret_pass@localhost:5432/sso_db?sslmode=disable" `
+  up
+
+{
+  "email": "baoantiem@gmail.com",
+  "full_name": "baoan",
+  "password": "123456baoan"
+}

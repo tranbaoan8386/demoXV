@@ -1,0 +1,132 @@
+1. Module 1: Identity & SSO Service (Viết bằng Go)
+Mục tiêu: Áp dụng kiến thức SSO và Clean Architecture (Go).
+
+Nhiệm vụ:
+
+Đóng vai trò Identity Provider (IdP) / Auth Gateway hỗ trợ OAuth2 / OIDC.
+
+Tích hợp SSO trực tiếp với LibreChat (để khi dùng LibreChat, người dùng đăng nhập qua SSO Service này).
+
+Kiến trúc (Clean Arch đơn giản):
+
+domain/: User, Session, Token entities.
+
+usecase/: Login, ValidateToken, IssueSSOToken.
+
+repository/: Postgres store.
+
+delivery/http/: Gin / Fiber handlers.
+
+2. Module 2: Document Processing Engine (Viết bằng Go)
+Mục tiêu: Tối ưu hiệu năng xử lý file, tái sử dụng cho nhiều dự án sau này (đúng góp ý của mentor).
+
+Nhiệm vụ:
+
+Nhận file (PDF, DOCX, XLSX, Image).
+
+Trích xuất văn bản (Text extraction), phân trang, chunking, và OCR (nếu là ảnh).
+*expose qua API (REST/gRPC) để service khác gọi.
+
+Kiến trúc (Clean Arch):
+
+Tách riêng adapter cho từng loại parser (Py/Go native PDF parser, Tesseract/Vision OCR adapter, Docx adapter).
+
+3. Module 3: Business Domain & AI Service (Viết bằng Python)
+Mục tiêu: Thực hành DDD (Domain Driven Design) mức độ đơn giản và Clean Architecture trong Python.
+
+Nhiệm vụ:
+
+Bounded Context 1: Document Management (Lưu trữ, tạo Embedding, Semantic Search).
+
+Bounded Context 2: Contract Risk Audit (Tập hợp quy tắc kiểm tra rủi ro hợp đồng, pháp lý, điều khoản thanh toán, phạt vi phạm).
+
+Ứng dụng DDD đơn giản:
+
+Entities/Value Objects: Contract, RiskRule, AuditReport, Clause.
+
+Domain Service: ContractAnalyzerService (Chứa logic kết hợp prompt, RAG và kiểm tra điều khoản).
+
+Repository: Interface lưu lưu trữ vector (Qdrant/Milvus/pgvector) và DB metadata.
+
+4. Giao diện & Trải nghiệm: LibreChat Integration
+Mục tiêu: Áp dụng LibreChat mà không cần tốn thời gian code lại Frontend từ đầu.
+
+Nhiệm vụ:
+
+Cấu hình LibreChat dùng SSO Service (Go) đã viết ở Module 1.
+
+Cấu hình Custom Endpoints / Plugin / Tools trong LibreChat kết nối với Python AI Service để người dùng có thể chat trực tiếp: "Hợp đồng A có điều khoản phạt nào rủi ro không?".
+
+====================================================
+
+📘 TÀI LIỆU TÓM TẮT DỰ ÁN: DEMO XV (ENTERPRISE AI PLATFORM)
+1. Định hướng & Mục tiêu
+Bài toán: Chuyển đổi từ tư duy "viết app đơn lẻ" sang xây dựng hệ thống Nền tảng dạng Module (Reusable Modules) theo góp ý của mentor.
+
+Bài học rút ra từ DEMOCV1: Không gom tất cả vào một service duy nhất. Tách nhỏ thành các module độc lập có thể tái sử dụng cho các dự án sau (SSO, Document Processing, OCR, AI Core).
+
+Công nghệ áp dụng:
+
+Go: Dùng cho SSO Service & Document Extractor Service (tối ưu hiệu năng, concurrency).
+
+Python: Dùng cho AI Core & Contract Audit Domain (tối ưu xử lý LLM, RAG, Vector Search).
+
+LibreChat: Dùng làm Copilot UI / Chat Interface.
+
+Kiến trúc: Clean Architecture (ở phạm vi vừa đủ) & Simple Domain-Driven Design (DDD).
+
+Phương pháp lập trình: Sử dụng AI Agent kết hợp quy chuẩn Agent Skills (SKILL.md) và System Instructions (GEMINI.md).
+2. Quy hoạch Cấu trúc Thư mục (Monorepo)
+Plaintext
+DemoXV/
+├── LibreChat/                    # UI / Chat Engine (Đã cài đặt & config Gemini API)
+├── services/
+│   ├── sso-service/              # [Go] Identity & SSO Service (Clean Architecture)
+│   ├── doc-processor/            # [Go] Text Extraction: PDF/DOCX/Excel/OCR Engine
+│   └── ai-audit-service/         # [Python] Core AI, RAG & Contract Audit (Clean Arch + DDD)
+├── .agent/                       # Nơi lưu trữ Rules & Skills cho AI Agent
+│   ├── rules/                    # System instructions (.md) cho toàn dự án
+│   └── skills/                   # Các SKILL.md hướng dẫn Agent sinh code từng module
+├── docker-compose.yml            # Container Orchestration
+└── README.md                     # Tài liệu dự án
+3. Ma trận Phân công Công việc: AI Agent vs. Bạn (Human)Hạng mục / Tầng kiến trúc🟢 AI Agent sinh code (Automation)🔴 Bạn / Người thiết kế (Human Decision)Domain Core (DDD)• Sinh Struct/Class Entity, Value Object.• Sinh Enum, Type definitions.• Quyết định Bounded Context & Nghiệp vụ.• Định nghĩa nguyên tắc rủi ro của hợp đồng.Clean Architecture• Sinh khung thư mục chuẩn.• Sinh Interface / Abstract Class cho Repo, UseCase.• Sinh DTOs & Mappers.• Quyết định hướng phụ thuộc (Dependency Rule).• Lựa chọn giao thức (REST API / gRPC).Infrastructure & DB• Sinh Boilerplate kết nối DB, MinIO.• Viết wrapper cho PDF Parser / OCR Library.• Sinh CRUD Queries / ORM Code.• Thiết kế DB Schema (Tables, Index, Foreign Keys).• Quản lý Secrets / Security API Keys.Security & Auth• Sinh hàm Mã hóa Password (bcrypt), Token JWT logic.• Viết HTTP Auth Middleware.• Thiết kế OAuth2 / SSO Flow.• Kiểm tra lỗ hổng bảo mật (CORS, Leaks).Testing & Config• Sinh Unit Test (Table-driven test Go, PyTest).• Sinh Dockerfile, docker-compose.yml.• Duyệt Code (Code Review) & Chạy kiểm thử.
+4. Lộ trình Triển khai (Roadmap)
+[ GIAI ĐOẠN 1 ] Cấu hình Agent Rules (.agent/) & LibreChat test
+       │
+       ▼
+[ GIAI ĐOẠN 2 ] Module SSO Service (Go + Clean Arch)
+       │       ├── Cấu trúc Clean Arch Go
+       │       └── Tích hợp OAuth2/OIDC Login cho LibreChat
+       ▼
+[ GIAI ĐOẠN 3 ] Module Document Processor (Go + Clean Arch)
+       │       └── API trích xuất Text từ PDF, DOCX, Excel, Image (OCR)
+       ▼
+[ GIAI ĐOẠN 4 ] Module AI Audit Core (Python + Clean Arch & DDD)
+               └── Bounded Context: Contract Risk Analysis, RAG, Custom Tools cho LibreChat
+5. Trạng thái Hiện tại (Current State)
+✅ Khởi tạo thư mục gốc D:\DemoXV.
+
+✅ Đã cài đặt LibreChat và cấu hình endpoint Google Gemini API trong librechat.yaml.
+
+✅ Thống nhất tư duy thiết kế Modular & ma trận làm việc với AI Agent (SKILL.md).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

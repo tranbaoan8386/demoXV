@@ -1,0 +1,71 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.local
+*.secret
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.code-workspace
+
+# Dependency / build caches
+node_modules/
+**/node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+**/coverage/
+bin/
+**/bin/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Logs / runtime / temporary files
+logs/
+**/logs/
+tmp/
+**/tmp/
+uploads/
+**/uploads/
+*.log
+*.pid
+*.sock
+
+# Local data / DB stores
+**/data/
+**/data-node/
+**/meili_data*/
+**/redis-config/
+**/otel/
+**/.volumes/
+**/postgres-data/
+**/pgdata/
+**/mongo-data/
+**/elasticsearch-data/
+**/minio-data/
+
+# Common backups and editor swap files
+*.bak
+*.tmp
+*.swp
+*~
+
+# Optional local-only Docker compose overrides
+# Keep tracked if you intentionally want them shared; otherwise uncomment the next line:
+# docker-compose.override.yml
