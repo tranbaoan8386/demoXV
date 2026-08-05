@@ -1,21 +1,191 @@
-﻿# Python Domain-Driven Design (DDD) Rules - DemoXV Platform
+﻿# Python Domain-Driven Design (DDD) Rules
 
-## General Conventions
+These rules apply to all Python services in the DemoXV platform.
 
-- Use Python 3.11+ strict type hints everywhere.
-- Use Pydantic v2 exclusively for Data Transfer Objects (DTOs) and Request/Response validation in API/UseCase layers.
-- Check Agent Skills in `.agent/skills/ai-audit/` and rules in `.agent/rules/` for context before generating code.
+---
 
-## Layer Architecture (`services/ai-audit-service`)
+## Language & Style
 
-1. **`services/ai-audit-service/app/domain/`**: Pure Python dataclasses, Value Objects, Domain Exceptions, and Abstract Base Classes (`abc.ABC`) for Interfaces.
-2. **`services/ai-audit-service/app/usecases/`**: Application business logic orchestrating domain models, RAG flows, and repository interfaces.
-3. **`services/ai-audit-service/app/infrastructure/`**: Technical adapters (Postgres DB, Qdrant/Vector DB, LLM & RAG Adapters).
-4. **`services/ai-audit-service/app/api/`**: FastAPI routers, middlewares, and Pydantic request/response schemas.
+- Use Python 3.11+.
+- Use strict type hints throughout the codebase.
+- Follow modern Python best practices.
+- Keep modules focused on a single responsibility.
+- Favor composition over inheritance where appropriate.
+- Prefer explicit code over implicit behavior.
 
-## Strict Domain & Code Guardrails
+---
 
-- **Pure Domain Boundary**: Use standard Python `dataclasses` or pure classes only in `domain/`. Strictly DO NOT import `pydantic`, `SQLAlchemy`, `FastAPI`, `langchain`, or `llama_index` inside `domain/`.
-- **Interface Definitions**: Define all Repositories, Vector Stores, and LLM Adapters as `abc.ABC` abstract classes inside `domain/`.
-- **Error Handling**: Define custom domain exceptions in `domain/exceptions.py`. Map them directly to standard HTTP status codes in `api/`.
-- **Complete Code**: Write full, runnable, production-ready code. Never use `# pass`, `# TODO`, or incomplete placeholder logic.
+## Data Models
+
+- Use standard `dataclasses` or plain Python classes for Domain models.
+- Use Pydantic v2 only for DTOs and API request/response models.
+- Keep domain models independent of framework-specific libraries.
+
+---
+
+## Domain-Driven Design
+
+Use the following architectural layers.
+
+```
+API
+    ↓
+Usecases
+    ↓
+Domain
+    ↓
+Infrastructure
+```
+
+Dependencies must always point toward the Domain.
+
+Outer layers may depend on inner layers.
+
+The Domain layer must never depend on infrastructure or framework code.
+
+---
+
+## Layer Responsibilities
+
+### Domain
+
+Responsibilities:
+
+- Entities
+- Value Objects
+- Domain Services
+- Domain Events
+- Repository Interfaces
+- Domain Exceptions
+
+Requirements:
+
+- Pure Python only.
+- No FastAPI.
+- No Pydantic.
+- No SQLAlchemy.
+- No LangChain.
+- No LlamaIndex.
+- No infrastructure dependencies.
+
+Use `abc.ABC` for repository and service interfaces.
+
+---
+
+### Usecases
+
+Responsibilities:
+
+- Application business logic.
+- Workflow orchestration.
+- Coordination between domain objects and repositories.
+
+Requirements:
+
+- Depend only on Domain abstractions.
+- Contain no HTTP handling.
+- Contain no persistence implementation.
+- Coordinate external services through interfaces.
+
+---
+
+### Infrastructure
+
+Responsibilities:
+
+- Database access.
+- Vector database integration.
+- LLM adapters.
+- RAG adapters.
+- External services.
+- File storage.
+
+Requirements:
+
+- Implement interfaces defined by the Domain.
+- Contain framework-specific integrations.
+- Contain no business rules.
+
+---
+
+### API
+
+Responsibilities:
+
+- FastAPI routers.
+- Request validation.
+- Response serialization.
+- Authentication.
+- Middleware.
+- Exception mapping.
+
+Requirements:
+
+- Use Pydantic v2 models.
+- Invoke usecases.
+- Convert HTTP requests into usecase inputs.
+- Convert usecase outputs into HTTP responses.
+- Do not implement business logic.
+
+---
+
+## Interface Design
+
+- Define interfaces using `abc.ABC`.
+- Keep interfaces small and cohesive.
+- Define abstractions close to the Domain.
+
+---
+
+## Exception Handling
+
+- Define domain-specific exceptions inside the Domain layer.
+- Translate domain exceptions into HTTP responses only within the API layer.
+- Avoid leaking infrastructure exceptions into business logic.
+
+---
+
+## Dependency Injection
+
+- Inject dependencies through constructors or dependency providers.
+- Depend on abstractions rather than concrete implementations.
+- Keep object construction outside business logic.
+
+---
+
+## Code Quality
+
+Generated code must be:
+
+- Complete.
+- Runnable.
+- Production-ready.
+- Fully typed.
+- Maintainable.
+- Consistent with the existing project.
+
+Never generate:
+
+- `pass`
+- `TODO`
+- Placeholder implementations.
+- Incomplete business logic.
+
+---
+
+## Architecture Constraints
+
+Always preserve Domain-Driven Design boundaries.
+
+Never:
+
+- Import FastAPI into the Domain layer.
+- Import Pydantic into the Domain layer.
+- Import SQLAlchemy into the Domain layer.
+- Import LangChain or LlamaIndex into the Domain layer.
+- Place business logic inside API routers.
+- Place persistence logic inside Usecases.
+
+Business rules belong only in the Domain and Usecase layers.
+
+Infrastructure concerns belong only in the Infrastructure layer.

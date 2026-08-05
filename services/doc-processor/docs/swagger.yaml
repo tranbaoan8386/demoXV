@@ -1,0 +1,49 @@
+basePath: /
+host: localhost:8081
+info:
+  contact: {}
+  title: Doc Processor API
+  version: "1.0"
+paths:
+  /api/v1/docs/extract:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: File PDF, DOCX hoặc TXT
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Trích xuất văn bản từ tài liệu
+      tags:
+      - Documents
+swagger: "2.0"

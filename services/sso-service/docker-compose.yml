@@ -6,15 +6,15 @@ services:
     container_name: demoxv_sso_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: demoxv_sso
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sso_db
+      POSTGRES_USER: demoxv_admin
+      POSTGRES_PASSWORD: demoxv_secret_pass
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d demoxv_sso"]
+      test: ["CMD-SHELL", "pg_isready -U demoxv_admin -d sso_db"]
       interval: 10s
       timeout: 5s
       retries: 5
