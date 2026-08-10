@@ -6,10 +6,14 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	swaggerFiles "github.com/swaggo/files"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 func NewRouter(authUsecase *usecase.AuthUsecase) *gin.Engine {
 	r := gin.Default()
+	r.GET("/docs", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/swagger/index.html")
+	})
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	api := r.Group("/api")

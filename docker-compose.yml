@@ -1,0 +1,5 @@
+include:
+  - docker-compose.infra.yml
+  - services/doc-processor/docker-compose.yml
+  - services/sso-service/docker-compose.yml
+  - services/ai-audit-service/docker-compose.yml

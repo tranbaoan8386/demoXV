@@ -1,0 +1,31 @@
+services:
+  doc-processor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: doc-processor
+    env_file:
+      - .env
+    environment:
+      PORT: 8081
+      DATABASE_URL: ${DATABASE_URL:-postgres://demoxv_admin:demoxv_secret_pass@postgres:5432/doc_db?sslmode=disable}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_secret_pass}
+      MINIO_BUCKET: ${MINIO_BUCKET:-contracts}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      JWT_SECRET: ${JWT_SECRET:-super-secret-key-change-in-production-2026}
+    ports:
+      - "8081:8081"
+    networks:
+      - demoxv-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+networks:
+  demoxv-network:
+    external: true
+    name: librechat_default

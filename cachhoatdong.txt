@@ -25,3 +25,22 @@ docker run --rm `
   "full_name": "baoan",
   "password": "123456baoan"
 }
+
+Chạy SSO service
+cd d:\DemoXV\services\sso-service
+go run ./cmd/api
+http://localhost:8080/docs
+
+Chạy Doc Processor
+cd d:\DemoXV\services\doc-processor
+go run .
+http://localhost:8081/docs
+
+Chạy AI Audit Service
+cd D:\DemoXV\services\ai-audit-service
+$env:PYTHONPATH="."; python -m uvicorn app.main:app --reload --port 8000
+
+http://localhost:8000/docs
+
+Xuất Spec kết nối LibreChat: Truy cập http://localhost:8000/openapi.json
+

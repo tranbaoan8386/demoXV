@@ -3,7 +3,6 @@ package extractor
 import (
 	"bytes"
 	"io"
-	"mime/multipart"
 	"path/filepath"
 	"strings"
 
@@ -27,7 +26,7 @@ func (e *GenericExtractor) Supports(ext string) bool {
 	}
 }
 
-func (e *GenericExtractor) Extract(file multipart.File, filename string) (string, error) {
+func (e *GenericExtractor) Extract(file io.Reader, filename string) (string, error) {
 	ext := strings.TrimPrefix(strings.ToLower(filepath.Ext(filename)), ".")
 
 	if !e.Supports(ext) {

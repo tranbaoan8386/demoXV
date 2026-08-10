@@ -1,8 +1,7 @@
+version: '3.9'
+
 services:
   sso-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: sso-service
     env_file:
       - .env
@@ -20,4 +19,5 @@ services:
 
 networks:
   demoxv-network:
-    external: true  # Sử dụng trực tiếp network chung do file root tạo ra
+    external: true
+    name: librechat_default
