@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	_ "demoxv/sso-service/docs"
 	"demoxv/sso-service/internal/delivery/http"
@@ -12,6 +13,7 @@ import (
 	"demoxv/sso-service/internal/usecase"
 	"demoxv/sso-service/pkg/hasher"
 	"demoxv/sso-service/pkg/token"
+
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -29,15 +31,11 @@ func main() {
 	}
 
 	log.Printf("initializing PostgreSQL connection with URL: %s", sanitizeDSN(postgresURL))
-	db, err := sql.Open("postgres", postgresURL)
+	db, err := connectPostgresWithRetry(postgresURL, 10, 2*time.Second)
 	if err != nil {
-		log.Fatalf("failed to open postgres connection: %v", err)
+		log.Fatalf("failed to establish postgres connection: %v", err)
 	}
 	defer db.Close()
-
-	if err := db.Ping(); err != nil {
-		log.Fatalf("failed to ping postgres: %v", err)
-	}
 	log.Println("PostgreSQL connected successfully")
 
 	if err := initSchema(db); err != nil {
@@ -58,18 +56,56 @@ func main() {
 	}
 }
 
+func connectPostgresWithRetry(dsn string, attempts int, delay time.Duration) (*sql.DB, error) {
+	if dsn == "" {
+		return nil, fmt.Errorf("database url is required")
+	}
+
+	var db *sql.DB
+	var err error
+	for i := 1; i <= attempts; i++ {
+		db, err = sql.Open("postgres", dsn)
+		if err != nil {
+			log.Printf("postgres open attempt %d/%d failed: %v", i, attempts, err)
+		} else if pingErr := db.Ping(); pingErr != nil {
+			log.Printf("postgres ping attempt %d/%d failed: %v", i, attempts, pingErr)
+			err = pingErr
+		}
+
+		if err == nil {
+			return db, nil
+		}
+
+		if db != nil {
+			_ = db.Close()
+		}
+
+		if i < attempts {
+			time.Sleep(delay)
+		}
+	}
+
+	return nil, fmt.Errorf("postgres connection failed after %d attempts: %w", attempts, err)
+}
+
 func initSchema(db *sql.DB) error {
 	query := `
+		CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 		CREATE TABLE IF NOT EXISTS users (
-		    id            TEXT PRIMARY KEY,
-		    email         TEXT NOT NULL UNIQUE,
-		    username      TEXT NOT NULL,
-		    password_hash TEXT NOT NULL,
-		    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
-		    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-		    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		    email VARCHAR(255) NOT NULL UNIQUE,
+		    username VARCHAR(100) NOT NULL,
+		    full_name VARCHAR(255) NOT NULL,
+		    password_hash VARCHAR(255) NOT NULL,
+		    role VARCHAR(50) NOT NULL DEFAULT 'user',
+		    status VARCHAR(50) NOT NULL DEFAULT 'active',
+		    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+		    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 		    last_login_at TIMESTAMPTZ NULL
 		);
+		CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+		CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 	`
 
 	_, err := db.Exec(query)

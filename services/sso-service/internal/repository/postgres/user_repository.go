@@ -29,13 +29,15 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 		INSERT INTO users (
 			id,
 			email,
+			username,
 			password_hash,
 			full_name,
 			role,
+			status,
 			is_active,
 			created_at,
 			updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
 
 	_, err := r.db.ExecContext(
@@ -43,9 +45,11 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 		query,
 		user.ID,
 		user.Email,
+		user.Username,
 		user.PasswordHash,
 		user.FullName,
 		defaultString(user.Role, "user"),
+		defaultString(user.Status, "active"),
 		user.IsActive,
 		user.CreatedAt,
 		user.UpdatedAt,
@@ -63,7 +67,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	}
 
 	query := `
-		SELECT id, email, password_hash, full_name, role, is_active, created_at, updated_at
+		SELECT id, email, username, password_hash, full_name, role, status, is_active, created_at, updated_at
 		FROM users
 		WHERE email = $1
 		LIMIT 1
@@ -79,7 +83,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (*domain.User, 
 	}
 
 	query := `
-		SELECT id, email, password_hash, full_name, role, is_active, created_at, updated_at
+		SELECT id, email, username, password_hash, full_name, role, status, is_active, created_at, updated_at
 		FROM users
 		WHERE id = $1
 		LIMIT 1
@@ -95,9 +99,11 @@ func scanUser(row *sql.Row) (*domain.User, error) {
 	err := row.Scan(
 		&user.ID,
 		&user.Email,
+		&user.Username,
 		&user.PasswordHash,
 		&user.FullName,
 		&user.Role,
+		&user.Status,
 		&user.IsActive,
 		&user.CreatedAt,
 		&user.UpdatedAt,

@@ -1,23 +1,23 @@
-version: '3.9'
-
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: demoxv_sso_postgres
-    restart: unless-stopped
+  sso-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sso-service
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: sso_db
-      POSTGRES_USER: demoxv_admin
-      POSTGRES_PASSWORD: demoxv_secret_pass
+      PORT: 8080
+      DATABASE_URL: ${DATABASE_URL:-postgres://demoxv_admin:demoxv_secret_pass@postgres:5432/sso_db?sslmode=disable}
+      JWT_SECRET: ${JWT_SECRET:-super-secret-key-change-in-production-2026}
     ports:
-      - "5433:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U demoxv_admin -d sso_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - "8080:8080"
+    networks:
+      - demoxv-network
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-volumes:
-  postgres_data:
+networks:
+  demoxv-network:
+    external: true  # Sử dụng trực tiếp network chung do file root tạo ra

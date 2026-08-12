@@ -9,20 +9,23 @@ import (
 )
 
 var (
-	ErrUserNotFound      = errors.New("user not found")
-	ErrUserAlreadyExists = errors.New("user already exists")
-	ErrInvalidEmail      = errors.New("invalid email")
-	ErrInvalidFullName   = errors.New("invalid full name")
-	ErrWeakPassword      = errors.New("password is too weak")
+	ErrUserNotFound       = errors.New("user not found")
+	ErrUserAlreadyExists  = errors.New("user already exists")
+	ErrInvalidEmail       = errors.New("invalid email")
+	ErrInvalidUsername    = errors.New("invalid username")
+	ErrInvalidFullName    = errors.New("invalid full name")
+	ErrWeakPassword       = errors.New("password is too weak")
 	ErrInvalidCredentials = errors.New("invalid credentials")
 )
 
 type User struct {
 	ID           string    `json:"id"`
 	Email        string    `json:"email"`
+	Username     string    `json:"username"`
 	FullName     string    `json:"full_name"`
 	PasswordHash string    `json:"-"`
 	Role         string    `json:"role"`
+	Status       string    `json:"status"`
 	IsActive     bool      `json:"is_active"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
@@ -30,6 +33,7 @@ type User struct {
 
 type RegisterDTO struct {
 	Email    string `json:"email"`
+	Username string `json:"username"`
 	FullName string `json:"full_name"`
 	Password string `json:"password"`
 }
@@ -51,6 +55,12 @@ func (dto *RegisterDTO) Validate() error {
 	}
 	if !isValidEmail(dto.Email) {
 		return ErrInvalidEmail
+	}
+	if strings.TrimSpace(dto.Username) == "" {
+		return ErrInvalidUsername
+	}
+	if len(strings.TrimSpace(dto.Username)) < 3 {
+		return ErrInvalidUsername
 	}
 	if strings.TrimSpace(dto.FullName) == "" {
 		return ErrInvalidFullName
@@ -77,6 +87,9 @@ func (dto *LoginDTO) Validate() error {
 func (u *User) Validate() error {
 	if strings.TrimSpace(u.Email) == "" || !isValidEmail(u.Email) {
 		return ErrInvalidEmail
+	}
+	if strings.TrimSpace(u.Username) == "" || len(strings.TrimSpace(u.Username)) < 3 {
+		return ErrInvalidUsername
 	}
 	if strings.TrimSpace(u.FullName) == "" || len(strings.TrimSpace(u.FullName)) < 3 {
 		return ErrInvalidFullName

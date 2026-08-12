@@ -119,7 +119,29 @@ DemoXV/
 
 
 
+1. Chuẩn hóa quy tắc cho AI Agent (.agent/)
 
+Viết rules/GEMINI.md: Thiết lập System Instructions chuẩn về Clean Architecture, DDD, coding convention cho cả Go và Python.
+
+Viết các skills/*.md: Soạn kịch bản/context chuẩn cho từng module (ai-audit, doc-processor, sso-module) để AI Agent dựa vào đó sinh code chính xác, tránh lệch kiến trúc.
+
+2. Phát triển phần lõi ai-audit-service (Python)
+
+Domain Layer: Sinh các Entity (Contract, Clause), Value Object (RiskLevel), Enum và các Rule thẩm định hợp đồng.
+
+Use Cases & Infrastructure: Xây dựng RAG pipeline (dùng FastAPI, LangChain/LlamaIndex, Vector DB) để truy vấn và phân tích rủi ro pháp lý.
+
+API Layer: Dựng các REST endpoints nhận file/text và trả về kết quả audit.
+
+3. Tích hợp hệ thống & Đóng gói
+
+LibreChat SSO: Cấu hình OAuth2/OIDC trên LibreChat để dùng sso-service làm Identity Provider.
+
+LibreChat Custom Tools: Tạo OpenAPI spec hoặc Action cho LibreChat kết nối trực tiếp với doc-processor (đọc file) và ai-audit-service (phân tích).
+
+Orchestration: Viết docker-compose.yml kết nối trơn tru 4 thành phần: LibreChat, SSO, Doc Processor và AI Audit Core cùng các Database (Postgres, Vector DB).
+
+Bạn muốn chúng ta bắt đầu ngay bằng việc soạn bộ Rule/Skill mẫu cho .agent hay triển khai khung code Python cho ai-audit-service trước?
 
 
 

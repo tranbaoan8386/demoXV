@@ -1,0 +1,23 @@
+version: '3.9'
+
+services:
+  sso-service:
+    container_name: sso-service
+    env_file:
+      - .env
+    environment:
+      PORT: 8080
+      DATABASE_URL: ${DATABASE_URL:-postgres://demoxv_admin:demoxv_secret_pass@postgres:5432/sso_db?sslmode=disable}
+      JWT_SECRET: ${JWT_SECRET:-super-secret-key-change-in-production-2026}
+    ports:
+      - "8080:8080"
+    networks:
+      - demoxv-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+networks:
+  demoxv-network:
+    external: true
+    name: librechat_default

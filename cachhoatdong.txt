@@ -21,7 +21,38 @@ docker run --rm `
   up
 
 {
-  "email": "baoantiem@gmail.com",
-  "full_name": "baoan",
-  "password": "123456baoan"
+  "email": "baoan@gmail.com",
+  "full_name": "tran bao an",
+  "password": "123456abc",
+  "username": "baoan"
 }
+
+Chạy SSO service
+cd d:\DemoXV\services\sso-service
+go run ./cmd/api
+http://localhost:8080/docs
+
+Chạy Doc Processor
+cd d:\DemoXV\services\doc-processor
+go run .
+http://localhost:8081/docs
+
+Chạy AI Audit Service
+cd D:\DemoXV\services\ai-audit-service
+$env:PYTHONPATH="."; python -m uvicorn app.main:app --reload --port 8000
+
+  http://localhost:8082/docs
+
+Xuất Spec kết nối LibreChat: Truy cập http://localhost:8000/openapi.json
+
+Trạng thái hệ thống hiện tại:
+
+Cửa ngõ duy nhất (Port 8000): Tất cả các kết nối từ bên ngoài chỉ cần trỏ về http://localhost:8000.
+
+Tài liệu API tập trung:
+
+SSO Service: http://localhost:8000/api/v1/auth/docs/
+
+Doc Processor: http://localhost:8000/api/v1/docs/docs/
+
+AI Audit Service: http://localhost:8000/api/v1/audit/docs/

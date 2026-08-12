@@ -7,6 +7,7 @@ import (
 
 	"demoxv/sso-service/internal/domain"
 	"demoxv/sso-service/internal/usecase"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -29,11 +30,12 @@ func NewAuthHandler(authUsecase *usecase.AuthUsecase) *AuthHandler {
 // @Failure 409 {object} map[string]interface{} "User already exists"
 // @Router /api/auth/register [post]
 // Example payload:
-// {
-//   "email": "alice@example.com",
-//   "full_name": "Alice Nguyen",
-//   "password": "password123"
-// }
+//
+//	{
+//	  "email": "alice@example.com",
+//	  "full_name": "Alice Nguyen",
+//	  "password": "password123"
+//	}
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req domain.RegisterDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -134,6 +136,8 @@ func mapDomainError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, domain.ErrInvalidEmail):
 		responseError(c, http.StatusBadRequest, "invalid_email", domain.ErrInvalidEmail.Error())
+	case errors.Is(err, domain.ErrInvalidUsername):
+		responseError(c, http.StatusBadRequest, "invalid_username", domain.ErrInvalidUsername.Error())
 	case errors.Is(err, domain.ErrInvalidFullName):
 		responseError(c, http.StatusBadRequest, "invalid_full_name", domain.ErrInvalidFullName.Error())
 	case errors.Is(err, domain.ErrWeakPassword):

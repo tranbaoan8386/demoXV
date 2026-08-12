@@ -1,0 +1,25 @@
+services:
+  ai-audit-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-audit-service
+    env_file:
+      - .env
+    environment:
+      PORT: 8082
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      DOC_PROCESSOR_URL: ${DOC_PROCESSOR_URL:-http://doc-processor:8081}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
+    ports:
+      - "8082:8082"
+    networks:
+      - demoxv-network
+    depends_on:
+      doc-processor:
+        condition: service_started
+
+networks:
+  demoxv-network:
+    external: true
+    name: librechat_default

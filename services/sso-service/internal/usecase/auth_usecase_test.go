@@ -45,6 +45,7 @@ func TestAuthUsecase_Register_Success(t *testing.T) {
 
 	user, token, err := uc.Register(context.Background(), domain.RegisterDTO{
 		Email:    "alice@example.com",
+		Username: "alice",
 		FullName: "Alice Nguyen",
 		Password: "password123",
 	})
@@ -71,6 +72,7 @@ func TestAuthUsecase_Register_DuplicateEmail(t *testing.T) {
 
 	_, _, err := uc.Register(context.Background(), domain.RegisterDTO{
 		Email:    "dup@example.com",
+		Username: "duplicate",
 		FullName: "Duplicate User",
 		Password: "password123",
 	})
@@ -80,6 +82,7 @@ func TestAuthUsecase_Register_DuplicateEmail(t *testing.T) {
 
 	_, _, err = uc.Register(context.Background(), domain.RegisterDTO{
 		Email:    "dup@example.com",
+		Username: "duplicate2",
 		FullName: "Duplicate User 2",
 		Password: "password456",
 	})
@@ -97,6 +100,7 @@ func TestAuthUsecase_Login_WrongPassword(t *testing.T) {
 
 	_, _, err := uc.Register(context.Background(), domain.RegisterDTO{
 		Email:    "bob@example.com",
+		Username: "bob",
 		FullName: "Bob Nguyen",
 		Password: "correctpass",
 	})
