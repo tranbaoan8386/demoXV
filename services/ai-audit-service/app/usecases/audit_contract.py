@@ -53,3 +53,21 @@ class AuditContractUseCase:
             )
             for record in records
         ]
+
+    def get_audit_by_document_id(self, user_id: str, document_id: str) -> ContractAudit | None:
+        record = self._repository.get_audit_by_document_id(document_id=document_id, user_id=user_id)
+        if record is None:
+            return None
+
+        return ContractAudit(
+            id=record.id,
+            document_id=record.document_id,
+            file_name=record.file_name,
+            overall_risk_score=float(record.overall_risk_score),
+            summary=record.summary,
+            clauses=[
+                Clause.model_validate(item)
+                for item in (record.clauses or [])
+            ],
+            created_at=record.created_at,
+        )

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"demoxv/doc-processor/internal/domain"
+
 	"github.com/google/uuid"
 )
 
@@ -85,6 +86,10 @@ func (u *DocumentUsecase) ExtractFile(ctx context.Context, file *multipart.FileH
 
 func (u *DocumentUsecase) GetDocument(ctx context.Context, documentID string) (*domain.Document, error) {
 	return u.repo.FindByID(ctx, documentID)
+}
+
+func (u *DocumentUsecase) ListDocuments(ctx context.Context, userID string) ([]*domain.Document, error) {
+	return u.repo.List(ctx, userID)
 }
 
 func buildStoragePath(filename string) string {

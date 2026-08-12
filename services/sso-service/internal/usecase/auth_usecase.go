@@ -9,13 +9,14 @@ import (
 	"demoxv/sso-service/internal/domain"
 	"demoxv/sso-service/pkg/hasher"
 	"demoxv/sso-service/pkg/token"
+
 	"github.com/google/uuid"
 )
 
 type AuthUsecase struct {
-	userRepo      domain.UserRepository
+	userRepo       domain.UserRepository
 	passwordHasher hasher.PasswordHasher
-	jwtService    *token.JWTService
+	jwtService     *token.JWTService
 }
 
 func NewAuthUsecase(repo domain.UserRepository, passwordHasher hasher.PasswordHasher, jwtService *token.JWTService) *AuthUsecase {
@@ -51,9 +52,11 @@ func (u *AuthUsecase) Register(ctx context.Context, dto domain.RegisterDTO) (*do
 	user := &domain.User{
 		ID:           uuid.NewString(),
 		Email:        email,
+		Username:     strings.TrimSpace(dto.Username),
 		FullName:     strings.TrimSpace(dto.FullName),
 		PasswordHash: hashedPassword,
 		Role:         "user",
+		Status:       "active",
 		IsActive:     true,
 		CreatedAt:    now,
 		UpdatedAt:    now,

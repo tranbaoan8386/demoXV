@@ -3,3 +3,4 @@ include:
   - services/doc-processor/docker-compose.yml
   - services/sso-service/docker-compose.yml
   - services/ai-audit-service/docker-compose.yml
+  - deploy/nginx/docker-compose.yml

@@ -4,7 +4,7 @@ import base64
 import json
 
 import jwt
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -79,6 +79,26 @@ async def audit_contract(
         user_id = _extract_user_id_from_token(auth.credentials)
 
     return await use_case.execute(payload.document_id, access_token=access_token, user_id=user_id)
+
+
+@router.get("/audit/contract/{document_id}", response_model=ContractAudit)
+def audit_contract_by_document(
+    document_id: str,
+    auth: HTTPAuthorizationCredentials | None = Depends(security),
+    use_case: AuditContractUseCase = Depends(get_audit_use_case),
+) -> ContractAudit:
+    if not auth or not auth.credentials:
+        raise HTTPException(status_code=404, detail="Audit record not found")
+
+    user_id = _extract_user_id_from_token(auth.credentials)
+    if not user_id:
+        raise HTTPException(status_code=404, detail="Audit record not found")
+
+    audit = use_case.get_audit_by_document_id(user_id=user_id, document_id=document_id)
+    if audit is None:
+        raise HTTPException(status_code=404, detail="Audit record not found")
+
+    return audit
 
 
 @router.get("/audit/history", response_model=AuditHistoryResponse)

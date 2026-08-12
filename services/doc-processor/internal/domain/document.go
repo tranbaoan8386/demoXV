@@ -45,6 +45,7 @@ type DocumentExtractor interface {
 type DocumentRepository interface {
 	Save(ctx context.Context, document *Document) error
 	FindByID(ctx context.Context, id string) (*Document, error)
+	List(ctx context.Context, userID string) ([]*Document, error)
 }
 
 type ObjectStorage interface {

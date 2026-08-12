@@ -8,6 +8,7 @@ import (
 	"demoxv/doc-processor/internal/delivery/http/middleware"
 	"demoxv/doc-processor/internal/domain"
 	"demoxv/doc-processor/internal/usecase"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -153,6 +154,57 @@ func (h *Handler) GetDocument(c *gin.Context) {
 			"storage_path": document.StoragePath,
 			"created_by":   document.CreatedBy,
 			"created_at":   document.CreatedAt,
+		},
+	})
+}
+
+// ListDocuments godoc
+// @Summary Lấy danh sách tài liệu của người dùng đang đăng nhập
+// @Tags Documents
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer <token>"
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/docs [get]
+func (h *Handler) ListDocuments(c *gin.Context) {
+	userID := ""
+	if value, exists := c.Get(middleware.ContextUserID); exists {
+		if storedUserID, ok := value.(string); ok {
+			userID = storedUserID
+		}
+	}
+
+	documents, err := h.documentUsecase.ListDocuments(c.Request.Context(), userID)
+	if err != nil {
+		log.Printf("ListDocuments error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "internal_error",
+				"message": err.Error(),
+			},
+		})
+		return
+	}
+
+	items := make([]gin.H, 0, len(documents))
+	for _, document := range documents {
+		items = append(items, gin.H{
+			"document_id":  document.ID,
+			"filename":     document.Filename,
+			"content":      document.Content,
+			"storage_path": document.StoragePath,
+			"created_by":   document.CreatedBy,
+			"created_at":   document.CreatedAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"documents": items,
 		},
 	})
 }

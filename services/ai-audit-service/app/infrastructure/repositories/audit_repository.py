@@ -43,3 +43,9 @@ class AuditRepository:
         self._session.commit()
         self._session.refresh(record)
         return record
+
+    def get_audit_by_document_id(self, *, document_id: str, user_id: str | None = None) -> AuditRecord | None:
+        query = self._session.query(AuditRecord).filter(AuditRecord.document_id == document_id)
+        if user_id:
+            query = query.filter(AuditRecord.user_id == user_id)
+        return query.order_by(AuditRecord.created_at.desc()).first()
