@@ -1,5 +1,8 @@
 # Environment / secrets
 .env
+
+# Ensure doc-processor source isn't accidentally ignored locally
+!services/doc-processor/src/
 .env.*
 !.env.example
 !.env.sample
@@ -69,3 +72,18 @@ uploads/
 # Optional local-only Docker compose overrides
 # Keep tracked if you intentionally want them shared; otherwise uncomment the next line:
 # docker-compose.override.yml
+
+# Python caches, virtualenvs, and test caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Virtual environment folders
+.venv/
+venv/
+env/
+
+# Local env files (already allowed above, kept for clarity)
+.env

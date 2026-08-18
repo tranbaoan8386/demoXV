@@ -1,0 +1,34 @@
+
+services:
+  legal-uploader:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "8083:8083"
+    # Map upload directory from host via UPLOAD_DIR variable set in .env
+    volumes:
+      - "${UPLOAD_DIR:-./uploads}:/app/uploads"
+    environment:
+      PORT: 8083
+      DATABASE_URL: postgresql://demoxv_admin:demoxv_secret_pass@demoxv-postgres:5432/legal_db
+      MINIO_ENDPOINT: demoxv-minio:9000
+      MINIO_ROOT_USER: minio_admin
+      MINIO_ROOT_PASSWORD: minio_secret_pass
+      MINIO_BUCKET: legal-documents
+      MINIO_USE_SSL: "false"
+      JWT_SECRET_KEY: super-secret-key-change-in-production-2026
+      UPLOAD_DIR: ./uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - demoxv-network
+    restart: unless-stopped
+
+networks:
+  demoxv-network:
+    external: true
+    name: librechat_default

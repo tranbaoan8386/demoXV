@@ -152,3 +152,42 @@ Bạn muốn chúng ta bắt đầu ngay bằng việc soạn bộ Rule/Skill m�
 
 
 
+SỔ TAY QUY TẮC PHÂN TÍCH HỢP ĐỒNG
+│
+├── 1. QUY TẮC PHÁP LÝ
+│      └── Lấy từ luật Việt Nam
+│
+├── 2. QUY TẮC KIỂM TRA
+│      └── AI phải kiểm tra gì trong hợp đồng
+│
+├── 3. QUY TẮC ĐỐI CHIẾU
+│      └── Đối chiếu hợp đồng với pháp luật
+│
+├── 4. QUY TẮC ĐÁNH GIÁ RỦI RO
+│      └── Cao / Trung bình / Thấp...
+│
+└── 5. QUY TẮC TRẢ KẾT QUẢ
+       └── Căn cứ + bằng chứng + phân tích + kiến nghị
+
+       Lớp 1: Chuẩn hóa Nguồn Đầu Vào (Zero-AI Ingestion)
+
+Nguồn dữ liệu sạch: Ưu tiên nạp file DOCX/PDF dạng điện tử hoặc trích xuất HTML trực tiếp từ Cơ sở dữ liệu Quốc gia về Văn bản Pháp luật (vbpl.vn) thay vì file scan OCR.
+
+Tách đoạn bằng lập trình cứng (Regex): Sử dụng thuật toán Python thuần túy dựa trên quy chuẩn Nghị định 34/2016/NĐ-CP để nhận diện chính xác các cấu trúc Chương -> Điều -> Khoản -> Điểm. Tuyệt đối không dùng AI ở bước này để tránh việc bị sửa đổi hay bỏ sót từ ngữ gốc.
+
+Lớp 2: Kiến trúc Lưu trữ Kép trong PostgreSQL (Dual-Storage)
+Mỗi bản ghi trong Database được chia làm 2 vùng riêng biệt:
+
+Cột raw_text (Đóng băng 100%): Lưu nguyên văn từng từ, từng dấu chấm, dấu phẩy từ file luật. Khi AI trả về kết quả cho người dùng, hệ thống chỉ lấy dữ liệu từ cột này để hiển thị.
+
+Cột full_context_text (Dành cho Vector Search): Gắn thêm tiền tố ngữ cảnh (VD: [Luật Thương mại 2005] -> [Điều 301] -> Khoản 1: ...) phục vụ tạo Embedding cho pgvector. Vùng này giúp AI định vị chính xác vị trí điều luật mà không ảnh hưởng đến văn bản gốc.
+
+Lớp 3: Kiểm duyệt Con người & Validation Tự động (Admin UI & Checksum)
+
+Thuật toán tự động phát hiện lỗi: Backend tự động quét kiểm tra logic:
+
+Cảnh báo nếu dãy số Điều bị ngắt quãng (VD: Từ Điều 10 nhảy sang Điều 12).
+
+Cảnh báo nếu Khoản/Điểm bị ngắt dở dang (không có dấu chấm kết thúc câu).
+
+Giao diện Admin Preview: Sau khi Python tách file luật, hệ thống hiển thị cây cấu trúc (Tree View) trên màn hình Admin. Chuyên viên pháp lý lướt kiểm tra nhanh, bấm "Xác nhận & Tạo Vector" thì dữ liệu mới chính thức đẩy vào pgvector.
