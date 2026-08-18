@@ -1,2 +1,3 @@
 CREATE DATABASE sso_db;
 CREATE DATABASE doc_db;
+CREATE DATABASE legal_db;
