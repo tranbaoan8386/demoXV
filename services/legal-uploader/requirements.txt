@@ -11,3 +11,4 @@ pdfplumber>=0.7.0
 reportlab>=4.0
 # Optional: Google GenAI client for AI fallback
 google-genai>=0.10.0
+pypdf>=3.10.0
