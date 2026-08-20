@@ -1,0 +1,14 @@
+Cleanup record - local maintenance
+Date: 2026-08-20
+
+Actions performed:
+- Retained script: services/legal-uploader/tools/check_latest_db.py
+- Searched directories: d:\DemoXV\uploads\tmp and d:\DemoXV\services\uploads\legal-uploader\tmp
+- Deleted temporary PDF files: None found
+
+Wider search:
+- Searched for PDF files in paths containing `tmp`, `tmp_upload`, or `tmp-` across the workspace: None found
+
+Notes:
+- No `tmp_uploads` directory found in workspace.
+- If you want me to also remove other temporary artifacts (e.g., under other tmp folders), tell me the paths or allow a wider search.

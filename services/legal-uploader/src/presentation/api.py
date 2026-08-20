@@ -1,4 +1,5 @@
-from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, BackgroundTasks, status, Query
+from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, BackgroundTasks, status, Query
+from fastapi.openapi.utils import get_openapi
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from uuid import UUID
 from ..application import upload_service
@@ -10,6 +11,8 @@ import os
 import tempfile
 from io import BytesIO
 from docx import Document
+from typing import Annotated, List
+import re
 
 
 ALLOWED_EXT = {'.doc', '.docx', '.pdf'}
@@ -24,6 +27,42 @@ ALLOWED_MIME_TYPES = {
 MAX_SIZE_BYTES = int(os.getenv('MAX_UPLOAD_BYTES', 20 * 1024 * 1024))
 
 app = FastAPI(title='Legal Uploader Service')
+
+
+def _fix_openapi_file_items(schema: dict) -> dict:
+    # Ensure file upload item schemas include format: binary so Swagger UI
+    # renders a file input instead of a plain string input.
+    try:
+        comps = schema.get('components', {}).get('schemas', {})
+        for name, s in comps.items():
+            props = s.get('properties', {})
+            for pname, p in props.items():
+                if isinstance(p, dict) and p.get('type') == 'array' and 'items' in p:
+                    item = p['items']
+                    if isinstance(item, dict) and item.get('type') == 'string':
+                        # set format to binary if not present
+                        if 'format' not in item:
+                            item['format'] = 'binary'
+                        # prefer application/pdf when a contentMediaType is present
+                        if 'contentMediaType' in item and 'pdf' in item.get('contentMediaType', ''):
+                            item['contentMediaType'] = 'application/pdf'
+                        # write back
+                        p['items'] = item
+    except Exception:
+        pass
+    return schema
+
+
+def _custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(title=app.title, version="0.1.0", routes=app.routes)
+    openapi_schema = _fix_openapi_file_items(openapi_schema)
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = _custom_openapi
 
 security = HTTPBearer()
 jwt_service = JWTService()
@@ -85,30 +124,90 @@ def extract_from_docx_bytes(file_bytes: bytes, fallback_title: str, filename: st
 
 @app.post('/api/laws/upload')
 async def upload_law(
-    file: UploadFile = File(...),
+    files: Annotated[List[UploadFile], File(description="Chọn 1 hoặc nhiều file PDF")],
     user=Depends(get_current_user),
     background_tasks: BackgroundTasks = None,
     force: bool = Query(False),
 ):
-    if not file:
-        raise HTTPException(status_code=400, detail='file is required')
-    filename = file.filename or ''
-    ctype = getattr(file, 'content_type', None)
+    if not files or len(files) == 0:
+        raise HTTPException(status_code=400, detail='files list is required')
 
-    if not allowed_file(filename):
-        if ctype and is_allowed_mime(ctype):
-            pass
-        else:
-            raise HTTPException(status_code=415, detail='unsupported media type')
+    # Read and validate files
+    entries = []  # list of (filename, bytes, content_type)
+    for f in files:
+        fname = f.filename or ''
+        ctype = getattr(f, 'content_type', None)
+        if not allowed_file(fname):
+            if ctype and is_allowed_mime(ctype):
+                pass
+            else:
+                raise HTTPException(status_code=415, detail=f'unsupported media type for {fname}')
+        contents = await f.read()
+        if len(contents) > MAX_SIZE_BYTES:
+            raise HTTPException(status_code=413, detail=f'payload too large for file {fname}')
+        entries.append((fname, contents, ctype))
 
-    contents = await file.read()
-    size = len(contents)
-    if size > MAX_SIZE_BYTES:
-        raise HTTPException(status_code=413, detail='payload too large')
+    # If single file, keep behavior identical
+    if len(entries) == 1:
+        filename, contents, ctype = entries[0]
+    else:
+        # sort by numeric token in filename if available (e.g., trang-1.pdf, page_2.pdf)
+        def extract_num(s: str):
+            if not s:
+                return None
+            m = re.search(r"(\d+)(?=[^\d]*$)", s)
+            if m:
+                try:
+                    return int(m.group(1))
+                except Exception:
+                    return None
+            return None
 
-    # MIME basic check
-    if ctype and not is_allowed_mime(ctype) and not allowed_file(filename):
-        raise HTTPException(status_code=415, detail='unsupported media type')
+        entries = sorted(entries, key=lambda e: (extract_num(e[0]) if extract_num(e[0]) is not None else float('inf'), e[0].lower()))
+
+        # Merge PDFs in-memory using pypdf (PdfMerger or PdfReader/PdfWriter)
+        try:
+            from pypdf import PdfMerger  # type: ignore
+            merger_available = True
+        except Exception:
+            merger_available = False
+
+        try:
+            if merger_available:
+                from pypdf import PdfMerger
+                merger = PdfMerger()
+                try:
+                    for fn, b, ct in entries:
+                        merger.append(BytesIO(b))
+                    merged_io = BytesIO()
+                    merger.write(merged_io)
+                    merged_io.seek(0)
+                    contents = merged_io.read()
+                finally:
+                    try:
+                        merger.close()
+                    except Exception:
+                        pass
+            else:
+                from pypdf import PdfReader, PdfWriter
+                writer = PdfWriter()
+                for fn, b, ct in entries:
+                    reader = PdfReader(BytesIO(b))
+                    for p in reader.pages:
+                        writer.add_page(p)
+                merged_io = BytesIO()
+                writer.write(merged_io)
+                merged_io.seek(0)
+                contents = merged_io.read()
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f'failed to merge PDF parts: {exc}')
+
+        filename = 'merged.pdf'
+        ctype = 'application/pdf'
+
+    # MIME/basic checks for final contents
+    if not contents:
+        raise HTTPException(status_code=400, detail='no file contents provided')
 
     # compute SHA256 content hash
     import hashlib
@@ -118,16 +217,14 @@ async def upload_law(
     # Extract metadata depending on file type: PDF vs DOC/DOCX
     try:
         ext = os.path.splitext(filename)[1].lower()
-        if ext == '.pdf' or (not ext and (ctype and 'pdf' in (ctype or '').lower() )):
+        if ext == '.pdf' or (not ext and (ctype and 'pdf' in (ctype or '').lower())):
             # write to a temp file and let parser handle PDF extraction
-            import tempfile
             with tempfile.NamedTemporaryFile(suffix='.pdf', delete=True) as tf:
                 tf.write(contents)
                 tf.flush()
                 try:
                     lines = parser.extract_lines_from_pdf(tf.name)
                 except Exception as e:
-                    # bubble up as a client error if pdf reading failed
                     raise RuntimeError(f'failed to extract PDF lines: {e}') from e
             metadata = parser.extract_document_metadata(lines, fallback_title=fallback_title)
         else:
