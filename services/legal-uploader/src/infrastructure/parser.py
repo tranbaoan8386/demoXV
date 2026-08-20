@@ -1,14 +1,66 @@
+import json
+import os
 import re
 import unicodedata
 from datetime import datetime
+from pathlib import Path
 from typing import List, Dict, Optional
 import logging
 
 logger = logging.getLogger(__name__)
 
+
+def _load_service_env_if_needed() -> None:
+    """Safely load GEMINI config from local env files without crashing inside Docker."""
+    key_present = bool(
+        os.environ.get('GOOGLE_API_KEY') or os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_GENAI_API_KEY')
+    )
+    if key_present:
+        return
+
+    try:
+        base_dir = Path(__file__).resolve().parent
+        candidates = [
+            base_dir.parent.parent / '.env',
+            base_dir.parent.parent / 'ai-audit-service' / '.env',
+            base_dir.parent / '.env',
+        ]
+        for candidate in candidates:
+            try:
+                if not candidate.exists():
+                    continue
+                with candidate.open('r', encoding='utf-8') as fh:
+                    for line in fh:
+                        line = line.strip()
+                        if not line or line.startswith('#') or '=' not in line:
+                            continue
+                        key, value = line.split('=', 1)
+                        key = key.strip()
+                        value = value.strip().strip('"').strip("'")
+                        if key and key not in os.environ and value:
+                            os.environ[key] = value
+                if os.environ.get('GOOGLE_API_KEY') or os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_GENAI_API_KEY'):
+                    return
+            except (FileNotFoundError, OSError, IndexError, TypeError, ValueError):
+                continue
+    except Exception as exc:
+        logger.error('Failed to load Gemini env from project files: %s', exc)
+
+
+_load_service_env_if_needed()
+
 # Regex helpers
 RE_DATE = re.compile(r'(?:ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})|(\d{1,2})[\/-](\d{1,2})[\/-](\d{4}))', re.IGNORECASE)
 RE_REF_NUMBER = re.compile(r'(\d{2,4}/\d{4}/[A-Z0-9Đ\-]+)')
+HEADER_STOP_WORDS = [
+    'cộng hòa xã hội chủ nghĩa việt nam',
+    'độc lập - tự do - hạnh phúc',
+    'quốc hội',
+    'khóa',
+    'kỳ họp thứ',
+    'khoá',
+    'ky hop thu',
+]
 
 
 def normalize_text(s: str) -> str:
@@ -197,19 +249,92 @@ def extract_metadata_from_lines(lines: List[str], fallback_title: Optional[str] 
     return {'title': title or fallback_title, 'reference_number': reference_number, 'issued_date': issued_date}
 
 
+def extract_zone_1(lines: List[str]) -> str:
+    """Split header text from the start of a legal document to the line before 'Căn cứ'."""
+    header_lines: List[str] = []
+    for raw_line in lines or []:
+        line = _clean_line(raw_line)
+        if not line:
+            continue
+        low = line.lower()
+        if 'căn cứ' in low or 'can cu' in low:
+            break
+        if any(stop in low for stop in HEADER_STOP_WORDS):
+            continue
+        header_lines.append(line)
+    return '\n'.join(header_lines).strip()
+
+
+def extract_header_with_ai(header_text: str) -> Dict[str, Optional[str]]:
+    """Use Gemini to clean the header and return title/reference_number JSON."""
+    _load_service_env_if_needed()
+    cleaned_text = (header_text or '').strip()
+    if not cleaned_text:
+        return {'title': None, 'reference_number': None}
+
+    try:
+        from google import genai
+        from google.genai import types
+    except Exception as exc:
+        logger.error('AI header extraction failed because google-genai is unavailable: %s', exc)
+        return {'title': None, 'reference_number': None}
+
+    api_key = os.environ.get('GOOGLE_API_KEY') or os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_GENAI_API_KEY')
+    if not api_key:
+        logger.error('AI header extraction skipped: no Gemini API key was available in the container environment')
+        return {'title': None, 'reference_number': None}
+
+    model_name = os.environ.get('GEMINI_MODEL', 'gemini-3.1-flash-lite')
+    system_prompt = (
+        "Đọc văn bản pháp luật sau. Loại bỏ Quốc hiệu, Tiêu ngữ, Tên cơ quan. "
+        "Trả về đúng JSON gồm 2 trường: 'title' và 'reference_number'."
+    )
+    contents = (
+        "Văn bản đầu trang:\n\n"
+        f"{cleaned_text}\n\n"
+        "Trả về đúng JSON gồm 2 trường: 'title' và 'reference_number'."
+    )
+
+    try:
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=model_name,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.0,
+                response_mime_type='application/json',
+            ),
+        )
+        raw = (response.text or '').strip()
+        if raw.startswith('```'):
+            raw = raw.strip('`')
+            if raw.lower().startswith('json'):
+                raw = raw[4:].strip()
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            return {
+                'title': parsed.get('title'),
+                'reference_number': parsed.get('reference_number'),
+            }
+        return {'title': None, 'reference_number': None}
+    except Exception as exc:
+        logger.exception('AI header extraction failed: %s', exc)
+        return {'title': None, 'reference_number': None}
+
+
 def extract_metadata_via_ai(text_content: str) -> Dict[str, Optional[str]]:
     """Fallback to AI to extract metadata. Returns dict with title, reference_number, issued_date or all None."""
     try:
         from google import genai
         from google.genai import types
-    except Exception:
-        logger.info('AI fallback unavailable: google-genai client not installed')
+    except Exception as exc:
+        logger.error('AI metadata extraction failed because google-genai is unavailable: %s', exc)
         return {'title': None, 'reference_number': None, 'issued_date': None}
 
     # Require an API key configured in env to avoid accidental network calls during tests
-    import os
     if not (os.environ.get('GOOGLE_API_KEY') or os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_GENAI_API_KEY')):
-        logger.info('AI fallback skipped: no Gemini API key in environment')
+        logger.error('AI metadata extraction skipped: no Gemini API key was available in the container environment')
         return {'title': None, 'reference_number': None, 'issued_date': None}
 
     client = genai.Client()  # expects environment-configured API key
@@ -226,7 +351,6 @@ def extract_metadata_via_ai(text_content: str) -> Dict[str, Optional[str]]:
             config=types.GenerateContentConfig(system_instruction=system_prompt, temperature=0.0, response_mime_type='application/json')
         )
         raw = response.text or ''
-        import json
         parsed = json.loads(raw)
         return {
             'title': parsed.get('title'),
@@ -239,11 +363,26 @@ def extract_metadata_via_ai(text_content: str) -> Dict[str, Optional[str]]:
 
 
 def extract_document_metadata(lines: List[str], fallback_title: Optional[str] = None) -> Dict[str, Optional[str]]:
-    """Primary entry: lines = cleaned lines from PDF first page."""
-    meta = extract_metadata_from_lines(lines, fallback_title=fallback_title)
-    # If title or reference missing -> trigger AI fallback
+    """Primary entry: lines = cleaned lines from PDF first page.
+
+    The header is split first and AI is used to extract the official title and reference number
+    before falling back to legacy regex heuristics.
+    """
+    _load_service_env_if_needed()
+    cleaned = [normalize_text(l) for l in (lines or []) if l and len(str(l).strip()) >= 2]
+    zone_1_text = extract_zone_1(cleaned)
+    ai_header = extract_header_with_ai(zone_1_text) if zone_1_text else {}
+
+    meta = extract_metadata_from_lines(cleaned, fallback_title=fallback_title)
+
+    if ai_header.get('title') or ai_header.get('reference_number'):
+        if ai_header.get('title'):
+            meta['title'] = ai_header['title'].strip()
+        if ai_header.get('reference_number'):
+            meta['reference_number'] = ai_header['reference_number'].strip()
+
     if not meta.get('title') or not meta.get('reference_number'):
-        text_content = '\n'.join(lines[:50])
+        text_content = '\n'.join(cleaned[:50])
         ai_meta = extract_metadata_via_ai(text_content)
         meta['title'] = meta.get('title') or ai_meta.get('title')
         meta['reference_number'] = meta.get('reference_number') or ai_meta.get('reference_number')

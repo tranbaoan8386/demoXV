@@ -4,6 +4,7 @@ services:
     build: .
     env_file:
       - .env
+      - ../ai-audit-service/.env
     ports:
       - "8083:8083"
     # Map upload directory from host via UPLOAD_DIR variable set in .env
@@ -19,6 +20,7 @@ services:
       MINIO_USE_SSL: "false"
       JWT_SECRET_KEY: super-secret-key-change-in-production-2026
       UPLOAD_DIR: ./uploads
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
     depends_on:
       postgres:
         condition: service_healthy
